@@ -1,0 +1,62 @@
+{
+  "name": "fakeforge-br",
+  "version": "0.2.1",
+  "description": "SDK oficial do FakeForge para gerar dados brasileiros válidos (CPF, CNPJ, CEP, PIX, cartão de crédito) em testes de software. Presets verticais fintech + ecom. Zero dependências, TypeScript nativo.",
+  "keywords": [
+    "cpf",
+    "cnpj",
+    "cep",
+    "pix",
+    "gerador",
+    "brazilian",
+    "brazil",
+    "faker",
+    "testing",
+    "mock",
+    "fixture",
+    "seed",
+    "fake-data",
+    "test-data",
+    "typescript"
+  ],
+  "author": "Everton Paula <hey@fakeforge.com.br>",
+  "license": "MIT",
+  "homepage": "https://fakeforge.com.br",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/everpaula/fakeforge-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/everpaula/fakeforge-node/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "test": "node --test test/*.test.js",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  }
+}
