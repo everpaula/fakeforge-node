@@ -3,7 +3,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { FakeForge } from "../dist/index.mjs";
+import { FakeForge } from "../dist/index.js";
 
 test("gera 5 CPFs válidos", async () => {
   const ff = new FakeForge();
