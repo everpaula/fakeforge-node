@@ -114,9 +114,10 @@ export interface EcomPresetItem {
  */
 export interface FakeForgeOptions {
   /**
-   * API key opcional. Sem key, o cliente usa o tier gratuito (50 chamadas/dia por IP).
-   * Com key do plano Dev/Team, libera 10.000-100.000 chamadas/dia.
-   * Pegue a sua em https://fakeforge.com.br/dashboard
+   * API key. Se não for passada, o cliente lê a variável de ambiente
+   * FAKEFORGE_API_KEY. Sem chave: 50 chamadas/dia por IP e até 50 itens por
+   * chamada. Chave grátis: 100 itens por chamada. Dev: 10.000 chamadas/dia e
+   * 10.000 itens por chamada. Pegue a sua em https://fakeforge.com.br/dashboard
    */
   apiKey?: string;
 
@@ -136,7 +137,11 @@ export interface FakeForgeOptions {
  * Opções pra cada chamada de generate.
  */
 export interface GenerateOptions {
-  /** Quantidade de items. Default: 1. Máximo: 100 (Free) / 1000 (Dev) / 10000 (Team). */
+  /**
+   * Quantidade de itens. Default: 1. Máximo por chamada: 50 sem chave, 100 no
+   * Free, 10.000 no Dev e no Team. Presets: amostra de 3 sem chave e no Free,
+   * até 2.000 nos planos pagos.
+   */
   quantity?: number;
 
   /** Se true (default), retorna com formatação BR (pontos, hífens). Se false, retorna só dígitos. */
@@ -144,58 +149,64 @@ export interface GenerateOptions {
 }
 
 /**
- * Objeto Pessoa retornado pelo endpoint /person e /preset=customer.
+ * Retornado por person(): nome e gênero. Para a pessoa com CPF, email, telefone
+ * e endereço, use preset("customer"), que devolve Customer.
  */
 export interface Person {
-  name: string;
-  cpf: string;
-  email: string;
-  phone: string;
-  birthdate: string;
-  address?: Address;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  gender: "male" | "female";
 }
 
-/**
- * Objeto Endereço brasileiro.
- */
+/** Endereço com CEP da cidade (10 estados cobertos). */
 export interface Address {
+  cep: string;
+  /** Logradouro com número, ex: "Rua Pernambuco, 238" */
   street: string;
-  number: string;
   neighborhood: string;
   city: string;
   state: string;
-  zip: string;
+  /** Sigla da UF, ex: "RJ" */
+  stateCode: string;
 }
 
-/**
- * Objeto Cartão de crédito com Luhn válido.
- */
+/** Retornado por preset("customer"): a mesma pessoa em todos os campos. */
+export interface Customer {
+  nome: string;
+  cpf: string;
+  email: string;
+  telefone: string;
+  endereco: Address;
+}
+
+/** Cartão com número que passa no algoritmo de Luhn. */
 export interface CreditCard {
   number: string;
-  brand: string;
-  cvv: string;
+  holder: string;
   expiry: string;
+  cvv: string;
+  brand: string;
 }
 
-/**
- * Objeto Conta bancária brasileira.
- */
+/** Conta bancária com código COMPE real (15 bancos). O dígito da conta é sorteado. */
 export interface BankAccount {
-  bank: string;
   bankCode: string;
+  bankName: string;
   agency: string;
   account: string;
-  accountType: string;
+  accountDigit: string;
 }
 
-/**
- * Objeto Empresa (CNPJ + razão social + endereço).
- */
+/** Empresa fictícia com CNPJ válido (mod-11). */
 export interface Company {
   cnpj: string;
-  name: string;
-  brand: string;
-  address?: Address;
+  razaoSocial: string;
+  nomeFantasia: string;
+  inscricaoEstadual: string;
+  phone: string;
+  email: string;
+  address: Address;
 }
 
 /**

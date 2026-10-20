@@ -8,27 +8,40 @@ import type {
   CreditCard,
   BankAccount,
   Company,
+  Customer,
 } from "./types.js";
 import { FakeForgeError } from "./types.js";
 
 const DEFAULT_BASE_URL = "https://fakeforge.com.br";
 const DEFAULT_TIMEOUT_MS = 30_000;
+const VERSION = "0.3.0";
+
+// Sem apiKey nas opções, vale a variável de ambiente (Node, Bun, Deno com
+// --allow-env). No navegador não existe process e o cliente segue sem chave.
+function envApiKey(): string | undefined {
+  try {
+    return typeof process !== "undefined" ? process.env?.FAKEFORGE_API_KEY || undefined : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Cliente principal do SDK FakeForge.
  *
  * @example
  * ```typescript
- * import { FakeForge } from "fakeforge";
+ * import { FakeForge } from "fakeforge-br";
  *
+ * // Lê FAKEFORGE_API_KEY do ambiente; sem ela, usa o acesso sem chave
  * const ff = new FakeForge();
  * const cpfs = await ff.cpf(10); // 10 CPFs válidos
- * const customers = await ff.preset("customer", { quantity: 100 });
+ * const clientes = await ff.preset("customer", 3);
  * ```
  *
- * @example Com API key (plano Dev/Team)
+ * @example Chave explícita (plano Dev/Team)
  * ```typescript
- * const ff = new FakeForge({ apiKey: process.env.FAKEFORGE_API_KEY });
+ * const ff = new FakeForge({ apiKey: "ff_..." });
  * const cpfs = await ff.cpf(10000); // Dev libera até 10.000 por chamada
  * ```
  */
@@ -38,7 +51,7 @@ export class FakeForge {
   private timeoutMs: number;
 
   constructor(options: FakeForgeOptions = {}) {
-    this.apiKey = options.apiKey;
+    this.apiKey = options.apiKey ?? envApiKey();
     this.baseUrl = options.baseUrl || DEFAULT_BASE_URL;
     this.timeoutMs = options.timeoutMs || DEFAULT_TIMEOUT_MS;
   }
@@ -60,7 +73,7 @@ export class FakeForge {
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      "User-Agent": "fakeforge-node-sdk/0.1.0",
+      "User-Agent": `fakeforge-node-sdk/${VERSION}`,
     };
     if (this.apiKey) {
       headers["X-API-Key"] = this.apiKey;
@@ -136,7 +149,7 @@ export class FakeForge {
     return this.request<string>("email", { quantity });
   }
 
-  /** Gera pessoa completa com nome + CPF + email + telefone + endereço correlacionados. */
+  /** Gera nome e gênero. Para CPF, email, telefone e endereço da mesma pessoa, use preset("customer"). */
   async person(quantity = 1, formatted = true): Promise<Person[]> {
     return this.request<Person>("person", { quantity, formatted });
   }
@@ -151,12 +164,12 @@ export class FakeForge {
     return this.request<string>("pixKey", { quantity });
   }
 
-  /** Gera conta bancária brasileira (banco + agência + conta com dígito verificador). */
+  /** Gera conta bancária com código COMPE real (15 bancos); o dígito da conta é sorteado. */
   async bankAccount(quantity = 1, formatted = true): Promise<BankAccount[]> {
     return this.request<BankAccount>("bankAccount", { quantity, formatted });
   }
 
-  /** Gera empresa completa (CNPJ + razão social + endereço). */
+  /** Gera empresa completa (CNPJ, razão social, nome fantasia, IE, contato e endereço). */
   async company(quantity = 1, formatted = true): Promise<Company[]> {
     return this.request<Company>("company", { quantity, formatted });
   }
@@ -187,27 +200,36 @@ export class FakeForge {
   }
 
   /**
-   * Gera dados correlacionados via preset. Cada preset retorna um objeto com
-   * múltiplos campos que se relacionam entre si (email deriva do nome, DDD
-   * bate com estado, etc).
+   * Gera dados relacionados via preset: cada item é um cliente ou pedido
+   * inteiro, com campos que batem entre si (chaves Pix do próprio CPF, email
+   * e celular; cartão no nome do titular; total que fecha com o carrinho).
    *
    * Presets disponíveis:
-   * - customer: pessoa + endereço + email + telefone + PIX
+   * - fintech: cliente + chaves Pix + conta bancária + cartão + score + renda (FintechPresetItem)
+   * - ecom: pedido inteiro com carrinho, pagamento e totais (EcomPresetItem)
+   * - customer: nome, CPF, email, telefone e endereço (Customer)
    * - employee: pessoa + conta bancária + PIX
    * - company: empresa + endereço + contato
    * - ecommerce_order: cliente + cartão + entrega
    * - contact_list: nome + email + telefone
    *
+   * Sem chave e no Free a API devolve amostra de até 3 por chamada; nos planos
+   * pagos, até 2.000.
+   *
    * @example
    * ```typescript
-   * const customers = await ff.preset("customer", { quantity: 100 });
-   * for (const c of customers) {
-   *   console.log(c.name, c.cpf, c.email, c.address);
-   * }
+   * const clientes = await ff.preset<Customer>("customer", 3);
+   * for (const c of clientes) console.log(c.nome, c.cpf, c.email, c.endereco.city);
    * ```
    */
-  async preset<T = Record<string, unknown>>(name: Preset, options: GenerateOptions = {}): Promise<T[]> {
-    return this.request<T>(`preset:${name}` as const, options);
+  async preset<T = Record<string, unknown>>(name: Preset, options: GenerateOptions | number = {}): Promise<T[]> {
+    const opts = typeof options === "number" ? { quantity: options } : options;
+    return this.request<T>(`preset:${name}` as const, opts);
+  }
+
+  /** Atalho para preset("customer"): a mesma pessoa em todos os campos. */
+  async customer(quantity = 1): Promise<Customer[]> {
+    return this.request<Customer>("preset:customer", { quantity });
   }
 
   /**

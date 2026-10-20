@@ -16,6 +16,7 @@ export type {
   CreditCard,
   BankAccount,
   Company,
+  Customer,
   FintechPresetItem,
   EcomPresetItem,
 } from "./types.js";

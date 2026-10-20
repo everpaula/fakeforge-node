@@ -1,14 +1,14 @@
-# fakeforge
+# fakeforge-br
 
-SDK oficial do [FakeForge](https://fakeforge.com.br) para Node.js e TypeScript — gera dados brasileiros válidos (CPF, CNPJ, CEP, PIX, cartão de crédito) para testes de software.
+SDK oficial do [FakeForge](https://fakeforge.com.br) para Node.js e TypeScript: gera dados brasileiros válidos (CPF, CNPJ, CEP, PIX, cartão de crédito) para testes de software.
 
 - ✅ **Zero dependências** (usa `fetch` nativo do Node 18+)
-- ✅ **TypeScript nativo** com types completos
+- ✅ **TypeScript nativo** com os tipos que a API devolve
 - ✅ **CJS + ESM** builds
-- ✅ **Validação real** — todos os documentos passam mod-11 da Receita Federal, Luhn, ANATEL
-- ✅ **Presets correlacionados** — pessoa completa com CPF + email + endereço + telefone coerentes em 1 chamada
-- ✅ **CNPJ alfanumérico 2026** — cobertura do novo formato (IN RFB 2.229)
-- ✅ **Grátis** — 50 chamadas/dia sem API key, ou 10.000/dia com plano Dev (R$29/mês)
+- ✅ **Validação real**: CPF e CNPJ passam no mod-11 da Receita Federal, cartão no Luhn, telefone com DDD da ANATEL
+- ✅ **Presets com dados relacionados**: cliente ou pedido inteiro em 1 chamada, com campos que batem entre si
+- ✅ **CNPJ alfanumérico 2026**: cobertura do novo formato (IN RFB 2.229)
+- ✅ **Grátis para começar**: 50 chamadas/dia sem chave; chave grátis com 100 itens por chamada; plano Dev (R$29/mês) com 10.000
 
 ## Instalação
 
@@ -17,19 +17,34 @@ npm install fakeforge-br
 ```
 
 ```bash
-pnpm add fakeforge
+pnpm add fakeforge-br
 ```
 
 ```bash
-yarn add fakeforge
+yarn add fakeforge-br
 ```
+
+## Chave de API
+
+Desde a 0.3.0 o cliente lê a chave da variável de ambiente `FAKEFORGE_API_KEY` quando você não passa `apiKey`. Pegue a sua em [fakeforge.com.br/dashboard](https://fakeforge.com.br/dashboard) (grátis, sem cartão).
+
+```bash
+export FAKEFORGE_API_KEY=ff_sua_chave
+```
+
+| | Chamadas por dia | Itens por chamada | Presets (dados relacionados) |
+|---|---|---|---|
+| Sem chave | 50 por IP | 50 | amostra de 3 |
+| Free (chave grátis) | 50 | 100 | amostra de 3 |
+| [Dev](https://fakeforge.com.br/pricing?plan=dev) (R$29/mês) | 10.000 | 10.000 | até 2.000 |
+| [Team](https://fakeforge.com.br/pricing?plan=team) (R$79/mês) | 100.000 | 10.000 | até 2.000 |
 
 ## Uso rápido
 
 ```typescript
 import { FakeForge } from "fakeforge-br";
 
-const ff = new FakeForge();
+const ff = new FakeForge(); // usa FAKEFORGE_API_KEY se existir
 
 // CPFs válidos (mod-11 da Receita Federal)
 const cpfs = await ff.cpf(10);
@@ -43,27 +58,30 @@ const pix = await ff.pixKey(3);
 
 // Cartão de crédito com Luhn válido
 const cartoes = await ff.creditCard(5);
-// [{ number, brand, cvv, expiry }, ...]
+// [{ number, holder, expiry, cvv, brand }, ...]
 
-// Pessoa completa correlacionada
-const pessoa = await ff.person(1);
-// [{ name, cpf, email, phone, birthdate, address }]
+// Cliente com nome, CPF, email, telefone e endereço da mesma pessoa
+const [cliente] = await ff.customer(1);
+// { nome, cpf, email, telefone, endereco: { cep, street, neighborhood, city, state, stateCode } }
 ```
 
-## Presets: dados correlacionados em 1 chamada
+## Presets: dados relacionados em 1 chamada
 
-Presets retornam objetos com múltiplos campos que se relacionam entre si — email deriva do nome, DDD bate com o estado do endereço, etc.
+Cada item de um preset é um cliente ou um pedido inteiro, com campos que batem entre si: o email sai do nome, as chaves Pix são o CPF, o email e o celular do próprio cliente, o cartão sai no nome do titular e o total do pedido fecha com os itens.
 
 ```typescript
-const customers = await ff.preset("customer", { quantity: 100 });
+import { FakeForge, type Customer } from "fakeforge-br";
 
-for (const c of customers) {
+const ff = new FakeForge();
+const clientes = await ff.preset<Customer>("customer", 3); // no Dev, até 2.000
+
+for (const c of clientes) {
   console.log({
-    name: c.name,           // "João Silva Souza"
-    cpf: c.cpf,             // "123.456.789-09" (mod-11 válido)
-    email: c.email,         // "joao.silva.souza@gmail.com" (derivado do nome)
-    phone: c.phone,         // "(11) 98765-4321" (DDD bate com estado)
-    address: c.address,     // { city: "São Paulo", state: "SP", ... }
+    nome: c.nome,           // "Aline Fonseca Vieira"
+    cpf: c.cpf,             // "640.254.907-06" (mod-11 válido)
+    email: c.email,         // "aline.fonseca886@gmail.com" (derivado do nome)
+    telefone: c.telefone,   // "(67) 97576-6589"
+    cidade: c.endereco.city // "Salvador"
   });
 }
 ```
@@ -72,57 +90,61 @@ Presets disponíveis:
 
 | Preset | Retorna |
 |---|---|
-| `customer` | pessoa + endereço + email + telefone + PIX |
+| `fintech` | cliente + chaves PIX do próprio CPF/email/celular + conta bancária + cartão + score Serasa + renda (`FintechPresetItem`) |
+| `ecom` | pedido com cliente, endereços, carrinho de 1 a 5 produtos, pagamento e totais (`EcomPresetItem`) |
+| `customer` | nome, CPF, email, telefone e endereço (`Customer`) |
 | `employee` | pessoa + conta bancária + PIX |
 | `company` | empresa + endereço + contato |
 | `ecommerce_order` | cliente + cartão + entrega |
 | `contact_list` | nome + email + telefone |
 
+A quantidade pode ir como número (`preset("fintech", 100)`) ou como opção (`preset("fintech", { quantity: 100 })`). Sem chave e no Free a API devolve uma amostra de até 3; para lotes maiores, use o passe de 7 dias ou o plano Dev.
+
 ## Comparação com Faker.js
 
-| Recurso | Faker.js (pt-BR) | fakeforge |
+| Recurso | Faker.js (pt-BR) | fakeforge-br |
 |---|---|---|
 | CPF com mod-11 válido | ❌ (só formato) | ✅ |
 | CNPJ com mod-11 válido | ❌ | ✅ |
 | CNPJ alfanumérico 2026 | ❌ | ✅ |
 | Cartão com Luhn | ❌ | ✅ |
 | PIX BACEN (4 formatos) | ❌ | ✅ |
-| Correlação entre campos (email deriva do nome, DDD bate com UF) | ❌ | ✅ |
+| Campos relacionados (email do nome, Pix do próprio CPF, cartão no nome do titular) | ❌ | ✅ |
 | DDDs oficiais ANATEL | ❌ | ✅ (67 DDDs) |
-| Bancos brasileiros reais (17) | ❌ | ✅ |
-| CEPs válidos por estado | ❌ | ✅ |
+| Bancos brasileiros com código COMPE real | ❌ | ✅ (15) |
+| CEPs por cidade | ❌ | ✅ |
 
-Se você usa Faker.js hoje só pra nome/endereço, funciona bem. Se precisa de CPF/CNPJ que **passe validação** (não só formato), use fakeforge.
+Se você usa Faker.js hoje só pra nome/endereço, funciona bem. Se precisa de CPF/CNPJ que **passe validação** (não só formato), use fakeforge-br.
 
-## Uso com pytest, jest, vitest
+## Uso com jest, vitest e Playwright
 
 ### Vitest / Jest fixture
 
 ```typescript
 // setup.ts
-import { FakeForge } from "fakeforge-br";
+import { FakeForge, type Customer } from "fakeforge-br";
 import { beforeAll } from "vitest";
 
 const ff = new FakeForge();
-let customers: unknown[];
+let clientes: Customer[];
 
 beforeAll(async () => {
-  customers = await ff.preset("customer", { quantity: 500 });
+  clientes = await ff.customer(3); // no Dev, até 2.000
 });
 
-export function getCustomer(i: number) {
-  return customers[i];
+export function getCliente(i: number) {
+  return clientes[i];
 }
 ```
 
 ```typescript
 // checkout.test.ts
 import { test, expect } from "vitest";
-import { getCustomer } from "./setup";
+import { getCliente } from "./setup";
 
-test("checkout aceita cartão válido do customer", async () => {
-  const customer = getCustomer(0);
-  const response = await api.post("/checkout", customer);
+test("checkout aceita o CPF do cliente", async () => {
+  const cliente = getCliente(0);
+  const response = await api.post("/checkout", cliente);
   expect(response.status).toBe(200);
 });
 ```
@@ -130,19 +152,19 @@ test("checkout aceita cartão válido do customer", async () => {
 ### Playwright E2E
 
 ```typescript
-import { test } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { FakeForge } from "fakeforge-br";
 
 const ff = new FakeForge();
 
 test("signup fluxo completo", async ({ page }) => {
-  const [pessoa] = await ff.person(1);
+  const [cliente] = await ff.customer(1);
 
   await page.goto("/signup");
-  await page.fill("#nome", pessoa.name);
-  await page.fill("#cpf", pessoa.cpf);
-  await page.fill("#email", pessoa.email);
-  await page.fill("#telefone", pessoa.phone);
+  await page.fill("#nome", cliente.nome);
+  await page.fill("#cpf", cliente.cpf);
+  await page.fill("#email", cliente.email);
+  await page.fill("#telefone", cliente.telefone);
   await page.click("#continuar");
 
   // Formato válido = passa validação de front
@@ -158,38 +180,34 @@ import { PrismaClient } from "@prisma/client";
 import { FakeForge } from "fakeforge-br";
 
 const prisma = new PrismaClient();
-const ff = new FakeForge({ apiKey: process.env.FAKEFORGE_API_KEY });
+const ff = new FakeForge(); // FAKEFORGE_API_KEY de um plano Dev
 
 async function main() {
-  const customers = await ff.preset("customer", { quantity: 1000 });
+  const clientes = await ff.customer(1000);
 
   await prisma.customer.createMany({
-    data: customers.map((c: any) => ({
+    data: clientes.map((c) => ({
       cpf: c.cpf,
-      name: c.name,
+      name: c.nome,
       email: c.email,
-      phone: c.phone,
+      phone: c.telefone,
     })),
   });
 
-  console.log(`✓ Seed: ${customers.length} customers inseridos`);
+  console.log(`Seed: ${clientes.length} clientes inseridos`);
 }
 
 main();
 ```
 
-## API key opcional (plano Dev/Team)
+## Planos pagos
 
-Sem API key: 50 chamadas/dia por IP, até 100 items por chamada. Perfeito pra dev local.
-
-Com API key do plano [Dev (R$29/mês)](https://fakeforge.com.br/pricing?plan=dev): 10.000 chamadas/dia, até 10.000 items por chamada. Ideal pra CI/CD, seed em produção, load test.
+Com a chave do plano [Dev (R$29/mês)](https://fakeforge.com.br/pricing?plan=dev): 10.000 chamadas/dia, até 10.000 itens por chamada nos tipos simples e até 2.000 nos presets. Bom pra CI/CD, seed de staging e teste de carga.
 
 ```typescript
-const ff = new FakeForge({ apiKey: process.env.FAKEFORGE_API_KEY });
-const cpfs = await ff.cpf(10_000); // no Dev, cabe em 1 chamada
+const ff = new FakeForge(); // FAKEFORGE_API_KEY do plano Dev
+const cpfs = await ff.cpf(10_000); // cabe em 1 chamada
 ```
-
-Pegue sua API key em [fakeforge.com.br/dashboard](https://fakeforge.com.br/dashboard).
 
 ## Tratamento de erros
 
@@ -202,8 +220,10 @@ try {
   const cpfs = await ff.cpf(1000);
 } catch (err) {
   if (err instanceof FakeForgeError && err.status === 429) {
-    console.error(`Rate limit atingido: ${err.usedToday}/${err.dailyLimit}`);
-    console.error(`Assine plano Dev: ${err.upgradeUrl}`);
+    console.error(`Limite do dia: ${err.usedToday}/${err.dailyLimit}`);
+    console.error(`Plano Dev: ${err.upgradeUrl}`);
+  } else if (err instanceof FakeForgeError && err.code === "quantity_limit_exceeded") {
+    console.error(err.message); // pediu mais itens que o plano permite por chamada
   } else {
     throw err;
   }
@@ -214,36 +234,33 @@ try {
 
 ### Métodos por tipo de dado
 
-- `cpf(quantity?, formatted?)` — CPFs válidos
-- `cnpj(quantity?, formatted?)` — CNPJs numéricos válidos
-- `cnpjAlfa(quantity?, formatted?)` — CNPJs alfanuméricos (IN RFB 2.229, 01/07/2026)
-- `cep(quantity?, formatted?)` — CEPs válidos por estado
-- `address(quantity?, formatted?)` — endereços completos
-- `phone(quantity?, formatted?)` — celulares ANATEL (9 na frente)
-- `landline(quantity?, formatted?)` — fixos residenciais (10 dígitos)
-- `email(quantity?)` — emails com nomes BR
-- `person(quantity?, formatted?)` — pessoa completa correlacionada
-- `creditCard(quantity?, formatted?)` — cartão com Luhn
-- `pixKey(quantity?)` — chave PIX (CPF/email/tel/EVP)
-- `bankAccount(quantity?, formatted?)` — conta bancária com DV por banco
-- `company(quantity?, formatted?)` — empresa (CNPJ + razão social + endereço)
-- `cnh(quantity?, formatted?)` — CNH DENATRAN
-- `rg(quantity?, formatted?)` — RG por estado
-- `pis(quantity?, formatted?)` — PIS/PASEP/NIT/NIS
-- `renavam(quantity?, formatted?)` — RENAVAM DENATRAN
-- `placa(quantity?)` — placa Mercosul
+- `cpf(quantity?, formatted?)`: CPFs válidos
+- `cnpj(quantity?, formatted?)`: CNPJs numéricos válidos
+- `cnpjAlfa(quantity?, formatted?)`: CNPJs alfanuméricos (IN RFB 2.229, 01/07/2026)
+- `cep(quantity?, formatted?)`: CEPs por cidade
+- `address(quantity?, formatted?)`: endereços completos
+- `phone(quantity?, formatted?)`: celulares ANATEL (9 na frente)
+- `landline(quantity?, formatted?)`: fixos residenciais (10 dígitos)
+- `email(quantity?)`: emails com nomes BR
+- `person(quantity?, formatted?)`: nome e gênero (para a pessoa com CPF e endereço, use `customer`)
+- `customer(quantity?)`: nome, CPF, email, telefone e endereço da mesma pessoa
+- `creditCard(quantity?, formatted?)`: cartão com Luhn
+- `pixKey(quantity?)`: chave PIX (CPF/email/tel/EVP)
+- `bankAccount(quantity?, formatted?)`: conta bancária com código COMPE real (o dígito da conta é sorteado)
+- `company(quantity?, formatted?)`: empresa (CNPJ, razão social, nome fantasia, IE, contato, endereço)
+- `cnh(quantity?, formatted?)`: CNH DENATRAN
+- `rg(quantity?, formatted?)`: RG por estado
+- `pis(quantity?, formatted?)`: PIS/PASEP/NIT/NIS
+- `renavam(quantity?, formatted?)`: RENAVAM DENATRAN
+- `placa(quantity?)`: placa Mercosul
 
 ### Presets
 
-- `preset("customer", options)`
-- `preset("employee", options)`
-- `preset("company", options)`
-- `preset("ecommerce_order", options)`
-- `preset("contact_list", options)`
+- `preset(name, quantity)` ou `preset(name, { quantity, formatted })`, com `name` entre `fintech`, `ecom`, `customer`, `employee`, `company`, `ecommerce_order` e `contact_list`
 
 ### Genérico
 
-- `generate<T>(type, options)` — chama a API com qualquer type
+- `generate<T>(type, options)`: chama a API com qualquer type
 
 ## Perguntas frequentes
 
@@ -279,10 +296,10 @@ export async function getCustomers() {
   try {
     return JSON.parse(await fs.readFile(CACHE, "utf8"));
   } catch {
-    const ff = new FakeForge();
-    const customers = await ff.preset("customer", { quantity: 100 });
-    await fs.writeFile(CACHE, JSON.stringify(customers, null, 2));
-    return customers;
+    const ff = new FakeForge(); // FAKEFORGE_API_KEY vem do ambiente
+    const clientes = await ff.customer(3); // no Dev, até 2.000
+    await fs.writeFile(CACHE, JSON.stringify(clientes, null, 2));
+    return clientes;
   }
 }
 ```
@@ -291,7 +308,7 @@ export async function getCustomers() {
 
 | Biblioteca | Downloads/sem | Gera CPF | Gera CNPJ | Gera PIX | Gera cartão (Luhn) | Correlacionado | API HTTP |
 |---|---|---|---|---|---|---|---|
-| **fakeforge-br** | novo | ✅ | ✅ (num + alfa 2026) | ✅ (4 formatos BACEN) | ✅ (Visa/Master/Elo/Amex) | ✅ (email ↔ nome ↔ DDD ↔ CEP) | ✅ |
+| **fakeforge-br** | novo | ✅ | ✅ (num + alfa 2026) | ✅ (4 formatos BACEN) | ✅ (Visa/Master/Elo/Amex) | ✅ (email ↔ nome, Pix ↔ CPF, cartão ↔ titular) | ✅ |
 | [cpf](https://www.npmjs.com/package/cpf) | 9.7K | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | [gerador-validador-cpf](https://www.npmjs.com/package/gerador-validador-cpf) | 6.1K | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | [@br-validators/core](https://www.npmjs.com/package/@br-validators/core) | 2.7K | ✅ (val) | ✅ (val) | ❌ | ❌ | ❌ | ❌ |
@@ -304,13 +321,13 @@ export async function getCustomers() {
 - **cpf / gerador-validador-cpf** se você só precisa de CPF puro, tratamento mínimo, zero overhead. Lib tiny, não cobre nada além.
 - **@br-validators/core / validation-br** se você só valida (não gera) CPF, CNPJ e outros docs no backend.
 - **faker-js/faker** se você faz testes gerais e aceita CPFs que **não passam** no validador mod-11 real. Útil pra nome/endereço, pouco útil pra documento.
-- **fakeforge-br** se você precisa de **CPF + CNPJ + PIX + cartão correlacionados** em testes end-to-end, seed de banco em escala (10K+ linhas), ou API HTTP pra consumir de qualquer linguagem do stack sem instalar dep.
+- **fakeforge-br** se você precisa de **CPF + CNPJ + PIX + cartão correlacionados** em testes end-to-end, seed de banco em escala (até 10.000 itens por chamada no Dev), ou API HTTP pra consumir de qualquer linguagem do stack sem instalar dep.
 
 ### Qual a diferença entre fakeforge-br e Faker.js (pt-BR), python-brasilidades e Laravel Brasil?
 
 | Biblioteca | Linguagem | Foco | Validação real |
 |---|---|---|---|
-| **fakeforge-br** | Node/TS + API HTTP | Todos os docs BR + presets correlacionados | ✅ mod-11, Luhn, ANATEL, BACEN |
+| **fakeforge-br** | Node/TS + API HTTP | Todos os docs BR + presets com dados relacionados | ✅ mod-11, Luhn, ANATEL, BACEN |
 | faker-js/faker (pt-BR) | JS/TS | Localização genérica (nome, endereço) | ❌ (formato apenas) |
 | validate-docbr | JS | Só validação de CPF/CNPJ, não geração | ✅ validação |
 | python-brasilidades | Python | Documentos BR | ✅ |
