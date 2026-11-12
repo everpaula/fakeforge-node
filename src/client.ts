@@ -14,7 +14,7 @@ import { FakeForgeError } from "./types.js";
 
 const DEFAULT_BASE_URL = "https://fakeforge.com.br";
 const DEFAULT_TIMEOUT_MS = 30_000;
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 
 // Sem apiKey nas opções, vale a variável de ambiente (Node, Bun, Deno com
 // --allow-env). No navegador não existe process e o cliente segue sem chave.
@@ -24,6 +24,24 @@ function envApiKey(): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+// Sem chave, a API devolve o header X-FakeForge-Aviso dizendo o que a chave grátis libera e onde
+// pegar. O SDK mostra uma vez por processo, numa linha no stderr. FAKEFORGE_SILENCIAR=1 desliga.
+let avisou = false;
+
+function silenciado(): boolean {
+  try {
+    return typeof process !== "undefined" && process.env?.FAKEFORGE_SILENCIAR === "1";
+  } catch {
+    return false;
+  }
+}
+
+function avisarUmaVez(aviso: string | null): void {
+  if (avisou || !aviso || silenciado()) return;
+  avisou = true;
+  console.warn(`[fakeforge] ${aviso} (FAKEFORGE_SILENCIAR=1 esconde este aviso)`);
 }
 
 /**
@@ -93,6 +111,8 @@ export class FakeForge {
       throw new FakeForgeError(`Erro de rede: ${err instanceof Error ? err.message : String(err)}`, 0);
     }
     clearTimeout(timer);
+
+    if (!this.apiKey) avisarUmaVez(response.headers.get("x-fakeforge-aviso"));
 
     let body: Record<string, unknown>;
     try {

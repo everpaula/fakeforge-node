@@ -8,7 +8,7 @@ SDK oficial do [FakeForge](https://fakeforge.com.br) para Node.js e TypeScript: 
 - ✅ **Validação real**: CPF e CNPJ passam no mod-11 da Receita Federal, cartão no Luhn, telefone com DDD da ANATEL
 - ✅ **Presets com dados relacionados**: cliente ou pedido inteiro em 1 chamada, com campos que batem entre si
 - ✅ **CNPJ alfanumérico 2026**: cobertura do novo formato (IN RFB 2.229)
-- ✅ **Grátis para começar**: 50 chamadas/dia sem chave; chave grátis com 100 itens por chamada; plano Dev (R$29/mês) com 10.000
+- ✅ **Grátis para começar**: sem chave, 100 itens por dia; com a chave grátis, 500 por dia e 100 por chamada; plano Dev (R$29/mês) sem teto por dia
 
 ## Instalação
 
@@ -24,20 +24,24 @@ pnpm add fakeforge-br
 yarn add fakeforge-br
 ```
 
-## Chave de API
+## Pegue sua chave grátis
 
-Desde a 0.3.0 o cliente lê a chave da variável de ambiente `FAKEFORGE_API_KEY` quando você não passa `apiKey`. Pegue a sua em [fakeforge.com.br/dashboard](https://fakeforge.com.br/dashboard) (grátis, sem cartão).
+Em um minuto, sem cartão: [fakeforge.com.br/chave](https://fakeforge.com.br/chave?de=sdk-node). Você digita o email, cola o código e a chave aparece na tela.
+
+O cliente lê a chave da variável de ambiente `FAKEFORGE_API_KEY` quando você não passa `apiKey`, então não precisa mudar o código.
 
 ```bash
 export FAKEFORGE_API_KEY=ff_sua_chave
 ```
 
-| | Chamadas por dia | Itens por chamada | Presets (dados relacionados) |
-|---|---|---|---|
-| Sem chave | 50 por IP | 50 | amostra de 3 |
-| Free (chave grátis) | 50 | 100 | amostra de 3 |
-| [Dev](https://fakeforge.com.br/pricing?plan=dev) (R$29/mês) | 10.000 | 10.000 | até 2.000 |
-| [Team](https://fakeforge.com.br/pricing?plan=team) (R$79/mês) | 100.000 | 10.000 | até 2.000 |
+| | Chamadas por dia | Itens por dia | Itens por chamada | Presets (dados relacionados) |
+|---|---|---|---|---|
+| Sem chave | 50 por IP | 100 por IP | 50 | amostra de 3 |
+| Free (chave grátis) | 50 | 500 | 100 | amostra de 3 |
+| [Dev](https://fakeforge.com.br/pricing?plan=dev) (R$29/mês) | 10.000 | sem teto | 10.000 | até 2.000 |
+| [Team](https://fakeforge.com.br/pricing?plan=team) (R$79/mês) | 100.000 | sem teto | 10.000 | até 2.000 |
+
+Sem chave, o SDK mostra uma vez por processo, no stderr, uma linha dizendo o que a chave grátis libera. `FAKEFORGE_SILENCIAR=1` esconde o aviso.
 
 ## Uso rápido
 
