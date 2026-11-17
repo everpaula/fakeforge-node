@@ -9,12 +9,13 @@ import type {
   BankAccount,
   Company,
   Customer,
+  ReceitaOptions,
 } from "./types.js";
 import { FakeForgeError } from "./types.js";
 
 const DEFAULT_BASE_URL = "https://fakeforge.com.br";
 const DEFAULT_TIMEOUT_MS = 30_000;
-const VERSION = "0.4.0";
+const VERSION = "0.5.0";
 
 // Sem apiKey nas opções, vale a variável de ambiente (Node, Bun, Deno com
 // --allow-env). No navegador não existe process e o cliente segue sem chave.
@@ -88,7 +89,10 @@ export class FakeForge {
     } else {
       url = `${this.baseUrl}/api/generate?type=${encodeURIComponent(type)}&quantity=${quantity}&formatted=${formatted}`;
     }
+    return this.get<T>(url);
+  }
 
+  private async get<T>(url: string): Promise<T[]> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "User-Agent": `fakeforge-node-sdk/${VERSION}`,
@@ -127,6 +131,26 @@ export class FakeForge {
     }
 
     return (body.data as T[]) || [];
+  }
+
+  /**
+   * Chama uma receita salva na sua conta (painel ou "Salvar como receita" no site). A mesma receita devolve
+   * os mesmos dados em toda chamada, então o teste não quebra por causa do dado. Precisa de chave.
+   *
+   * @example
+   * ```typescript
+   * const clientes = await ff.receita("clientes-sp");
+   * const tres = await ff.receita("clientes-sp", { n: 3 });
+   * const outros = await ff.receita("clientes-sp", { variar: true }); // dados novos, a receita não muda
+   * const antiga = await ff.receita("clientes-sp", { versao: 1 });    // versão anterior (Dev, por 30 dias)
+   * ```
+   */
+  async receita<T = unknown>(nome: string, opcoes: ReceitaOptions = {}): Promise<T[]> {
+    const params = new URLSearchParams({ formato: "json" });
+    if (opcoes.n !== undefined) params.set("n", String(opcoes.n));
+    if (opcoes.variar) params.set("variar", "1");
+    const alvo = opcoes.versao ? `${nome}@v${opcoes.versao}` : nome;
+    return this.get<T>(`${this.baseUrl}/api/r/${encodeURIComponent(alvo)}?${params}`);
   }
 
   /** Gera 1 ou mais CPFs válidos (mod-11 da Receita Federal). */

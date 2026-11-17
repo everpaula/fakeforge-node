@@ -136,6 +136,16 @@ export interface FakeForgeOptions {
 /**
  * Opções pra cada chamada de generate.
  */
+/** Opções de `receita()`. */
+export interface ReceitaOptions {
+  /** Menos linhas que a receita (de 1 até as linhas que a chamada devolve no seu plano). */
+  n?: number;
+  /** Dados novos nesta chamada, sem mudar a receita (`?variar=1`). */
+  variar?: boolean;
+  /** Versão anterior da receita, chamável por 30 dias depois de editar (plano Dev). */
+  versao?: number;
+}
+
 export interface GenerateOptions {
   /**
    * Quantidade de itens. Default: 1. Máximo por chamada: 50 sem chave, 100 no

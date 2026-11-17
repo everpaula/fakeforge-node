@@ -50,5 +50,5 @@ test("sem chave avisa uma vez só, numa linha", comApiFalsa(async (avisos, heade
   assert.equal(avisos.length, 1);
   assert.ok(avisos[0].includes(AVISO));
   assert.ok(!avisos[0].includes("\n"));
-  assert.equal(headers[0]["User-Agent"], "fakeforge-node-sdk/0.4.0");
+  assert.equal(headers[0]["User-Agent"], "fakeforge-node-sdk/0.5.0");
 }));

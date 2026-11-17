@@ -11,6 +11,7 @@ export type {
   Preset,
   FakeForgeOptions,
   GenerateOptions,
+  ReceitaOptions,
   Person,
   Address,
   CreditCard,

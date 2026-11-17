@@ -104,6 +104,25 @@ Presets disponíveis:
 
 A quantidade pode ir como número (`preset("fintech", 100)`) ou como opção (`preset("fintech", { quantity: 100 })`). Sem chave e no Free a API devolve uma amostra de até 3; para lotes maiores, use o passe de 7 dias ou o plano Dev.
 
+## Receitas: os mesmos dados em todo teste (0.5.0)
+
+Salve um conjunto de dados como receita (no gerador do site, em "Salvar como receita") e chame pelo nome. A mesma
+receita devolve os mesmos dados em toda chamada, então o teste não quebra por causa do dado. Precisa de chave.
+
+```typescript
+import { FakeForge } from "fakeforge-br";
+
+const fakeforge = new FakeForge({ apiKey: process.env.FAKEFORGE_API_KEY });
+const clientes = await fakeforge.receita("clientes-sp");
+
+await fakeforge.receita("clientes-sp", { n: 3 });         // menos linhas
+await fakeforge.receita("clientes-sp", { variar: true }); // dados novos, a receita não muda
+await fakeforge.receita("clientes-sp", { versao: 1 });    // versão anterior (Dev, por 30 dias)
+```
+
+No grátis cabe 1 receita, e cada chamada devolve as 3 primeiras linhas. No Dev, quantas receitas você quiser, com
+até 2.000 linhas por chamada. A mesma receita também responde em `GET https://fakeforge.com.br/api/r/<nome>`.
+
 ## Comparação com Faker.js
 
 | Recurso | Faker.js (pt-BR) | fakeforge-br |
